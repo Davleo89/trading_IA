@@ -1,3 +1,96 @@
+# Instalación y Configuración
+
+## Requisitos Previos
+
+Antes de comenzar, asegúrate de tener instalado:
+
+- Python 3.11 o superior
+- Git (opcional)
+- Ollama
+- Conexión a Internet para descargar modelos y dependencias
+
+# Clonar el Proyecto
+
+git clone <https://github.com/Davleo89/trading_IA.git>
+cd IA_Trading
+
+O simplemente descarga el proyecto y descomprímelo en una carpeta local.
+
+# Crear un Entorno Virtual
+
+## Windows
+
+Abrir PowerShell o CMD:
+
+python -m venv venv
+
+Activar el entorno:
+
+venv\Scripts\activate
+
+Si todo funciona correctamente verás:
+
+(venv) C:\IA_Trading>
+
+## Linux
+
+Crear entorno virtual:
+
+python3 -m venv venv
+
+Activarlo:
+
+source venv/bin/activate
+
+Resultado esperado:
+
+(venv) usuario@equipo:~/IA_Trading$
+
+# Instalar Dependencias
+
+## Actualizar pip:
+
+python -m pip install --upgrade pip
+
+## Instalar dependencias:
+
+pip install pypdf
+pip install sentence-transformers
+pip install transformers
+pip install torch
+pip install numpy
+pip install ollama
+
+# Instalación de Ollama
+
+## Windows
+
+Descargar desde:
+
+https://ollama.com
+
+Instalar normalmente utilizando el asistente de instalación.
+
+## Linux
+
+Instalar mediante:
+
+curl -fsSL https://ollama.com/install.sh | sh
+
+Verificar instalación:
+
+ollama --version
+
+# Descargar Modelo LLM
+
+Descargar Qwen:
+
+ollama pull qwen2.5:3b
+
+Verificar modelos instalados:
+
+ollama list
+
 # IA Trading Assistant
 
 ## Descripción
