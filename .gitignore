@@ -1,0 +1,10 @@
+# Ignorar el entorno virtual por completo
+venv/
+.venv/
+
+# Ignorar la base de datos local y archivos temporales
+*.db
+*.log
+
+# Opcional: Si no quieres subir los libros PDF originales a GitHub
+pdf_books/
