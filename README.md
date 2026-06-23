@@ -54,12 +54,12 @@ python -m pip install --upgrade pip
 
 ## Instalar dependencias:
 
-pip install pypdf
-pip install sentence-transformers
-pip install transformers
-pip install torch
-pip install numpy
-pip install ollama
+- pip install pypdf
+- pip install sentence-transformers
+- pip install transformers
+- pip install torch
+- pip install numpy
+- pip install ollama
 
 # Instalación de Ollama
 
