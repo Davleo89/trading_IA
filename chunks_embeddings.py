@@ -68,14 +68,17 @@ conexion.commit()
 # DIVIDIR TEXTO
 # ==================================================
 
-def dividir_texto(texto, tamano=500):
+def dividir_texto(texto, tamano = 300, overlap = 50):
 
     palabras = texto.split()
+    paso = tamano - overlap
 
-    for i in range(0, len(palabras), tamano):
-        yield " ".join(
+    for i in range(0, len(palabras), paso):
+        chunks = " ".join(
             palabras[i:i + tamano]
         )
+        if chunks.strip():
+            yield chunks
 
 # ==================================================
 # GENERAR CHUNKS

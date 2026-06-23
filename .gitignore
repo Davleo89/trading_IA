@@ -8,3 +8,6 @@ venv/
 
 # Opcional: Si no quieres subir los libros PDF originales a GitHub
 pdf_books/
+
+#ignora archivos temporales
+temp/
