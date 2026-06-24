@@ -54,12 +54,12 @@ python -m pip install --upgrade pip
 
 ## Instalar dependencias:
 
-pip install pypdf
-pip install sentence-transformers
-pip install transformers
-pip install torch
-pip install numpy
-pip install ollama
+- pip install pypdf
+- pip install sentence-transformers
+- pip install transformers
+- pip install torch
+- pip install numpy
+- pip install ollama
 
 # Instalación de Ollama
 
@@ -156,21 +156,21 @@ Desarrollar una IA especializada en trading que pueda:
 
 # Arquitectura Actual
 
-PDFs
-↓
-Extracción de texto
-↓
-SQLite
-↓
-Chunks
-↓
-Embeddings
-↓
-Búsqueda semántica
-↓
-Qwen 2.5
-↓
-Respuesta al usuario
+PDF\
+↓\
+Extracción de texto\
+↓\
+SQLite\
+↓\
+Chunks\
+↓\
+Embeddings\
+↓\
+Búsqueda semántica\
+↓\
+Qwen 2.5\
+↓\
+Respuesta al usuario\
 
 ---
 
@@ -199,15 +199,15 @@ Respuesta al usuario
 
 IA_Trading/
 
-├── cargar_libros.py
-
-├── chunks_embeddings.py
-
-├── consultar_ia.py
-
-├── libros_trading.db
-
-└── pdf_books/
+├── cargar_libros.py\
+\
+├── chunks_embeddings.py\
+\
+├── consultar_ia.py\
+\
+├── libros_trading.db\
+\
+└── pdf_books/\
 
 ---
 
