@@ -1,6 +1,8 @@
 import sqlite3
 
-conexion = sqlite3.connect("libros_trading.db")
+from config import DB_PATH
+
+conexion = sqlite3.connect(DB_PATH)
 
 cursor = conexion.cursor()
 

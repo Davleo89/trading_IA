@@ -1,12 +1,15 @@
 import os
 import sqlite3
+
 from pypdf import PdfReader
+from config import DB_PATH
+from config import PDF_PATH
 
 # ==================================================
 # CONEXIÓN SQLITE
 # ==================================================
 
-conexion = sqlite3.connect("libros_trading.db")
+conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 # ==================================================
@@ -25,38 +28,25 @@ CREATE TABLE IF NOT EXISTS libros (
 conexion.commit()
 
 # ==================================================
-# CARPETA DE PDFs
-# ==================================================
-
-CARPETA_PDFS = "pdf_books"
-
-# ==================================================
 # LEER PDFs
 # ==================================================
 
-if os.path.exists(CARPETA_PDFS):
+if PDF_PATH.exists():
 
     archivos = [
         archivo
-        for archivo in os.listdir(CARPETA_PDFS)
-        if archivo.lower().endswith(".pdf")
+        for archivo in PDF_PATH.iterdir()
+        if archivo.suffix.lower() == ".pdf"
     ]
 
     print(f"\n📚 PDFs encontrados: {len(archivos)}")
 
     for archivo in archivos:
-
-        ruta_pdf = os.path.join(
-            CARPETA_PDFS,
-            archivo
-        )
-
-        print(f"\nLeyendo: {archivo}")
-
+        
+        print(f"\nLeyendo: {archivo.name}")
+        
         try:
-
-            reader = PdfReader(ruta_pdf)
-
+            reader = PdfReader(str(archivo))
             texto_completo = ""
 
             for pagina in reader.pages:
@@ -73,24 +63,24 @@ if os.path.exists(CARPETA_PDFS):
             VALUES (?, ?)
             """,
             (
-                archivo,
+                archivo.name,
                 texto_completo
             ))
 
             print(
-                f"✅ Guardado: {archivo}"
+                f"✅ Guardado: {archivo.name}"
             )
 
         except Exception as e:
 
             print(
-                f"❌ Error en {archivo}: {e}"
+                f"❌ Error en {archivo.name}: {e}"
             )
 
 else:
 
     print(
-        f"⚠️ No existe la carpeta {CARPETA_PDFS}"
+        f"⚠️ No existe la carpeta {PDF_PATH.resolve()}"
     )
 
 # ==================================================

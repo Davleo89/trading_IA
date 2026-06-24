@@ -2,11 +2,14 @@ import sqlite3
 import ollama
 import json
 
+from config import DB_PATH
+from config import LLM_MODEL
+
 # ==================================================
 # CONEXIÓN
 # ==================================================
 
-conexion = sqlite3.connect("libros_trading.db")
+conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 # ==================================================
@@ -33,7 +36,16 @@ print(f"\n📚 Libros pendientes: {len(libros)}")
 
 for libro_id, nombre_archivo, texto_completo in libros:
     print(f"\nProcesando: {nombre_archivo}")
-    texto_muestra = texto_completo[:4000]
+    tamano = len(texto_completo)
+    inicio = texto_completo[:1500]
+    medio = texto_completo[
+        tamano // 2:
+        tamano // 2 + 1500
+    ]
+    final = texto_completo[-1500:]
+    
+    texto_muestra = (inicio + "\n\n" + medio + "\n\n" + final)
+    
     prompt = f"""
     Analiza el siguiente fragmento de un libro.
 
@@ -66,7 +78,7 @@ for libro_id, nombre_archivo, texto_completo in libros:
 
     try:
         respuesta = ollama.chat(
-            model="qwen2.5:3b",
+            model=LLM_MODEL,
             messages=[
                 {
                     "role": "user",

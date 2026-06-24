@@ -1,10 +1,12 @@
 import sqlite3
 
+from config import DB_PATH
+
 # ==================================================
 # CONEXIÓN
 # ==================================================
 
-conexion = sqlite3.connect("libros_trading.db")
+conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 print("\n" + "=" * 60)

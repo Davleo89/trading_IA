@@ -1,18 +1,21 @@
 import sqlite3
 import pickle
+
 from sentence_transformers import SentenceTransformer
+from config import DB_PATH
+from config import EMBEDDING_MODEL
 
 # ==================================================
 # MODELO DE EMBEDDINGS
 # ==================================================
 
-modelo = SentenceTransformer("all-MiniLM-L6-v2")
+modelo = SentenceTransformer(EMBEDDING_MODEL)
 
 # ==================================================
 # CONEXIÓN SQLITE
 # ==================================================
 
-conexion = sqlite3.connect("libros_trading.db")
+conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 # ==================================================
