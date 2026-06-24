@@ -49,10 +49,8 @@ if PDF_PATH.exists():
             reader = PdfReader(str(archivo))
             texto_completo = ""
 
-            for pagina in reader.pages:
-                texto_completo += (
-                    pagina.extract_text() or ""
-                )
+            for pagina in reader.pages[15:]:
+                texto_completo += pagina.extract_text() or ""
 
             cursor.execute("""
             INSERT OR IGNORE INTO libros

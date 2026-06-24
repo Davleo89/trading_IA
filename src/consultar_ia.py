@@ -8,6 +8,7 @@ from memoria import MemoriaConversacion
 from config import DB_PATH
 from config import EMBEDDING_MODEL
 from config import LLM_MODEL
+from clasificador import clasificar_pregunta
 
 memoria = MemoriaConversacion()
 
@@ -40,22 +41,30 @@ def similitud_coseno(a, b):
 # ==================================================
 # BUSCAMOS LOS CHUNKS RELEVANTES
 # ==================================================
-def buscar_chunks(pregunta, top = 3, score_min = 0.50):
+def buscar_chunks(pregunta, categoria, top = 3, score_min = 0.40):
     # Obtener el embedding de la pregunta
     embedding_pregunta = modelo.encode(pregunta)
     
     cursor.execute("""
     SELECT
-    chunks.chunk_text,
-    libros.nombre_archivo,
-    libros.categoria,
-    embeddings.vector
+        chunks.chunk_text,
+        libros.nombre_archivo,
+        libros.tematica,
+        embeddings.vector
+
     FROM chunks
+
     JOIN embeddings
     ON chunks.id = embeddings.chunk_id
+
     JOIN libros
     ON chunks.libro_id = libros.id
-    """)
+
+    WHERE libros.tematica = ?
+    """,
+    (
+        categoria,
+    ))
 
     resultados = []
 
@@ -81,19 +90,34 @@ def buscar_chunks(pregunta, top = 3, score_min = 0.50):
     )
     
     resultados_filtrados = []
-    for resultado in resultados:
+    
+    for resultado in resultados[:10]:
+        score = resultado[3]
+        libro = resultado[1]
+        
         if resultado[3] >= score_min:
             resultados_filtrados.append(resultado)
             
     print(f"Chunks encontrados: {len(resultados)}")
     print(f"Chunks validos: {len(resultados_filtrados)}")
+    if resultados_filtrados:
+
+        print("\nMEJOR CHUNK ENCONTRADO:\n")
+        print(resultados_filtrados[0][0][:1000])
+
+    else:
+
+        print("\n⚠️ No se encontraron chunks relevantes")
+        
     return resultados_filtrados[:top]
 
 # ==================================================
 # CONSTRUIMOS EL CONTEXTO PARA LA IA
 # ==================================================
-def obtener_contexto(pregunta):
-    chunks = buscar_chunks(pregunta)
+def obtener_contexto(chunks):
+    
+    print(f"📚 Chunks encontrados: {len(chunks)}")
+    
     contexto = ""
     for texto, libro, categoria, score in chunks:
         contexto += f"""
@@ -106,12 +130,13 @@ def obtener_contexto(pregunta):
         """
     
     if len(chunks) == 0:
-        return "No se encontró información suficientemente relevante en la base de conocimiento."
-
+        return (
+            "No se encontró información suficientemente relevante en la base de conocimiento."
+        )
     return contexto
 
-def obtener_fuentes(pregunta):
-    chunks = buscar_chunks(pregunta)
+def obtener_fuentes(chunks):
+    
     fuentes = []
     for texto, libro, categoria, score in chunks:
         fuentes.append(
@@ -139,13 +164,10 @@ def calcular_confianza(chunks):
 # ==================================================
 # CONSULTAMOS A LA IA
 # ==================================================
-def preguntar_ia(pregunta):
-    contexto_rag = obtener_contexto(
-    pregunta
-    )
-    
-    fuentes = obtener_fuentes(pregunta)
-    chunks = buscar_chunks(pregunta)
+def preguntar_ia(pregunta, categoria):
+    chunks = buscar_chunks(pregunta, categoria)
+    contexto_rag = obtener_contexto(chunks)
+    fuentes = obtener_fuentes(chunks)
     confianza = calcular_confianza(chunks)
 
     historial = memoria.get_context()
@@ -205,15 +227,21 @@ def preguntar_ia(pregunta):
     return respuesta_final
 
 while True:
+
     pregunta = input(
         "\nPregunta: "
     )
-    
+
     if pregunta.lower() == "salir":
         break
 
-    respuesta = preguntar_ia(
+    categoria = clasificar_pregunta(
         pregunta
+    )
+
+    respuesta = preguntar_ia(
+        pregunta,
+        categoria
     )
 
     print("\nRespuesta:\n")

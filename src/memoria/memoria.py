@@ -1,4 +1,5 @@
 import sqlite3
+from config import DB_PATH
 
 class MemoriaConversacion:
     
@@ -48,9 +49,7 @@ class MemoriaConversacion:
             
     def guardar_sqlite(self, rol, mensaje):
 
-        conexion = sqlite3.connect(
-            "libros_trading.db"
-        )
+        conexion = sqlite3.connect(DB_PATH)
 
         cursor = conexion.cursor()
 
@@ -66,9 +65,7 @@ class MemoriaConversacion:
             
     def cargar_historial(self):
 
-        conexion = sqlite3.connect(
-            "libros_trading.db"
-        )
+        conexion = sqlite3.connect(DB_PATH)
 
         cursor = conexion.cursor()
 
