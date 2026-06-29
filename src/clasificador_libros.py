@@ -1,8 +1,16 @@
 import sqlite3
 import ollama
+import json
 
-from collections import Counter
-from config import DB_PATH, LLM_MODEL
+from config import DB_PATH
+from config import LLM_MODEL
+from config import (
+    cargar_json,
+    cargar_prompt,
+    CATEGORIAS_JSON,
+    ALIAS_CAT_JSON,
+    CLASIFICAR_PROMPT
+)
 
 # ==========================================
 # CONFIG
@@ -18,47 +26,83 @@ conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 # ==========================================
-# CLASIFICAR CHUNK
+# CLASIFICAR LIBROS
 # ==========================================
 
-def clasificar_chunk(texto):
+categorias = cargar_json(CATEGORIAS_JSON)
 
-    prompt = f"""
-Clasifica el siguiente fragmento.
+# ==========================================
+# NORMALIZADOR
+# ==========================================
 
-Categorias posibles:
+alias = cargar_json(ALIAS_CAT_JSON)
 
-- Analisis Tecnico
-- Psicologia del Trading
-- Gestion de Riesgo
-- Inversion
-- Historia de Mercados
-- Trading General
-
-Responde SOLO con una categoria.
-
-Fragmento:
-
-{texto[:2500]}
-"""
-
-    respuesta = ollama.chat(
-        model=LLM_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-
+def normalizar_categoria(categoria):
     categoria = (
-        respuesta["message"]["content"]
-        .strip()
+        categoria
+        .lower()
         .replace("*", "")
+        .strip()
+    )
+    
+    return alias.get(categoria, "Trading General")
+
+# ==========================================
+# CONSTRUIR PROMPT
+# ==========================================
+
+PROMPT_CLASIFICAR = cargar_prompt(CLASIFICAR_PROMPT)
+
+def construir_prompt(nombre, resumen, chunks, categorias):
+    texto_chunks = ""
+    for i, chunk in enumerate(chunks, start=1):
+        texto_chunks += (
+            f"- Fragmento {i}: "
+            f"{chunk[:800]}\n"
+        )
+        
+    texto_categorias = "\n".join(
+    f"- {c}"
+    for c in categorias
+    )
+        
+    prompt = (
+        PROMPT_CLASIFICAR   
+        .replace("{NOMBRE}", nombre)
+        .replace("{RESUMEN}", resumen)
+        .replace("{CHUNKS}", texto_chunks)
+        .replace("{CATEGORIAS}", texto_categorias)
+    )
+    
+    return prompt
+
+# ==========================================
+# OBTENER INFORMACION DEL LIBRO
+# ==========================================
+def obtener_info_libro(libro_id):
+    cursor.execute("""
+    SELECT
+
+    nombre_archivo,
+    resumen
+
+    FROM libros
+    
+    WHERE id = ?
+    """,
+    (libro_id,)
     )
 
-    return categoria
+    fila = cursor.fetchone()
+    
+    if fila is None:
+        return None
+        
+    return {
+        "nombre": fila[0],
+        "resumen": fila[1],
+        "chunks": obtener_chunks_libro(libro_id)
+    }
 
 # ==========================================
 # OBTENER CHUNKS DISTRIBUIDOS
@@ -97,75 +141,66 @@ def obtener_chunks_libro(libro_id):
     return seleccionados
 
 # ==========================================
-# LIBROS
+# GUARDADO
 # ==========================================
 
-cursor.execute("""
-SELECT
-    id,
-    nombre_archivo
-FROM libros
-""")
-
-libros = cursor.fetchall()
-
-print(f"\n📚 Libros encontrados: {len(libros)}")
-
-# ==========================================
-# PROCESAR
-# ==========================================
-
-for libro_id, nombre in libros:
-
-    print("\n" + "=" * 60)
-    print(nombre)
-
-    chunks = obtener_chunks_libro(libro_id)
-
-    votos = []
-
-    for n, chunk in enumerate(chunks, start=1):
-
-        try:
-
-            categoria = clasificar_chunk(chunk)
-            votos.append(categoria)
-
-            print(f"Chunk {n}: {categoria}")
-
-        except Exception as e:
-
-            print(f"Error chunk {n}: {e}")
-
-    if not votos:
-        continue
-
-    contador = Counter(votos)
-
-    categoria_final = (
-        contador
-        .most_common(1)[0][0]
-    )
-
-    print("\nVotacion:")
-    print(contador)
-
-    print(
-        f"\n🏆 Categoria final: {categoria_final}"
-    )
-
+def guardar_categoria(libro_id, categoria):
     cursor.execute("""
     UPDATE libros
     SET tematica = ?
     WHERE id = ?
     """,
     (
-        categoria_final,
+        categoria,
         libro_id
     ))
-
     conexion.commit()
 
-conexion.close()
+# ==========================================
+# CLASIFICACION
+# ==========================================
 
-print("\n✅ Clasificacion terminada")
+def clasificar_libro(info_libro):
+    
+    prompt = construir_prompt(
+        nombre = info_libro["nombre"],
+        resumen = info_libro["resumen"],
+        chunks = info_libro["chunks"],
+        categorias = categorias
+    )
+    
+    respuesta = ollama.chat(
+        model = LLM_MODEL,
+        messages = [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+    categoria = respuesta["message"]["content"]
+
+    print("\n====================")
+    print("RESPUESTA DEL MODELO:")
+    print(repr(categoria))
+    print("====================\n")
+
+    return normalizar_categoria(categoria)
+
+cursor.execute("""
+SELECT id
+FROM libros
+""")
+
+libros = cursor.fetchall()
+
+for (libro_id,) in libros:
+
+    info_libro = obtener_info_libro(libro_id)
+
+    if info_libro is None:
+        continue
+
+    categoria = clasificar_libro(info_libro)
+
+    guardar_categoria(libro_id, categoria)

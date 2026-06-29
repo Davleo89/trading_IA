@@ -1,17 +1,20 @@
+from pathlib import Path
+import sys
 import sqlite3
 
-conexion = sqlite3.connect(
-    "data/libros_trading.db"
-)
+ROOT_PATH = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT_PATH / "src"))
 
+from config import DB_PATH
+
+conexion = sqlite3.connect(DB_PATH)
 cursor = conexion.cursor()
 
 cursor.execute("""
 SELECT
-    tematica,
-    COUNT(*)
+    nombre_archivo,
+    tematica
 FROM libros
-GROUP BY tematica
 """)
 
 for fila in cursor.fetchall():

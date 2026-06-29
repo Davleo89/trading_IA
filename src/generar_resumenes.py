@@ -129,9 +129,8 @@ for libro_id, nombre_archivo, texto_completo in libros:
         )
 
     except Exception as e:
-        print(
-            f"❌ Error: {e}"
-        )
+        print(f"\n❌ Error procesando: {nombre_archivo}")
+        print(e)
 
 # ==================================================
 # FINALIZAR
