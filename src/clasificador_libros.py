@@ -1,6 +1,7 @@
 import sqlite3
 import ollama
 import json
+import time
 
 from config import DB_PATH
 from config import LLM_MODEL
@@ -42,10 +43,18 @@ def normalizar_categoria(categoria):
         categoria
         .lower()
         .replace("*", "")
+        .replace('"', "")
+        .replace("'", "")
+        .replace(".", "")
+        .replace(":", "")
         .strip()
     )
     
-    return alias.get(categoria, "Trading General")
+    for palabra_clave, categoria_real in alias.items():
+        if palabra_clave in categoria:
+            return categoria_real
+    
+    return "Trading General"
 
 # ==========================================
 # CONSTRUIR PROMPT
@@ -180,27 +189,71 @@ def clasificar_libro(info_libro):
     )
     categoria = respuesta["message"]["content"]
 
-    print("\n====================")
-    print("RESPUESTA DEL MODELO:")
-    print(repr(categoria))
-    print("====================\n")
-
+    print(f"🤖 Respuesta del modelo: {categoria!r}")
+    
     return normalizar_categoria(categoria)
 
-cursor.execute("""
-SELECT id
-FROM libros
-""")
+def main():
+    
+    inicio = time.time()
 
-libros = cursor.fetchall()
+    cursor.execute("""
+    SELECT id
+    FROM libros
+    """)
 
-for (libro_id,) in libros:
+    libros = cursor.fetchall()
+    total_libros = len(libros)
+    libros_ok = 0
+    libros_error = 0
 
-    info_libro = obtener_info_libro(libro_id)
+    for numero, (libro_id,) in enumerate(libros, start=1):
+        
+        print("\n" + "=" * 60)
+        print(f"📚 Libro {numero} de {total_libros}")
 
-    if info_libro is None:
-        continue
+        try:
+            
+            info_libro = obtener_info_libro(libro_id)
 
-    categoria = clasificar_libro(info_libro)
+            if info_libro is None:
+                print("⚠ No se encontró información del libro.")
+                continue
+        
+            print(f"📖 {info_libro['nombre']}")
+            print("🧠 Preparando clasificación...")
 
-    guardar_categoria(libro_id, categoria)
+            categoria = clasificar_libro(info_libro)
+            print(f"🏷  Categoría: {categoria}")
+            print("💾 Guardando en la base de datos...")
+
+            guardar_categoria(libro_id, categoria)
+            print("✅ Guardado correctamente.")
+            
+            libros_ok += 1
+            
+        except Exception as e:
+            
+            libros_error += 1
+            
+            print("\n" + "=" * 60)
+            print("❌ ERROR")
+            print(f"Libro ID: {libro_id}")
+            print(f"Tipo: {type(e).__name__}")
+            print(f"Descripción: {e}")
+            print("⏭ Continuando con el siguiente libro...")
+            
+            continue
+        
+    print("\n" + "=" * 60)
+    print("📊 RESUMEN FINAL")
+    print(f"✅ Libros clasificados correctamente: {libros_ok}")
+    print(f"❌ Libros con error: {libros_error}")
+        
+    fin = time.time()
+    tiempo_total = fin - inicio
+    print(f"⏱ Tiempo total de ejecución: {tiempo_total:.2f} segundos")
+    print("\n" + "=" * 60)
+    
+if __name__ == "__main__":
+        main()
