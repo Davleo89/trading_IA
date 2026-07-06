@@ -12,6 +12,7 @@ JSON_PATH = CONFIG_PATH/"json"
 PROMPT_PATH = CONFIG_PATH/"prompts"
 DATA_PATH = ROOT_PATH/"data"
 TOOLS_PATH = ROOT_PATH/"tools"
+LOGS_PATH = ROOT_PATH/"logs"
 
 
 # ==================================================

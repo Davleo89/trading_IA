@@ -2,8 +2,9 @@ import time
 import argparse
 
 # ==========================================
-# IMPORTS DE MODULOS DEL PIPELINE
+# IMPORTS DE MÓDULOS DEL PIPELINE
 # ==========================================
+from utils import logger
 
 import leer_pdf
 import crear_chunks
@@ -16,24 +17,25 @@ import clasificador_libros
 #===========================================
 
 def ejecutar_paso(nombre, funcion):
-    print("\n" + "=" * 60)
-    print(f"📌 Ejecutando paso: {nombre}")
+    logger.escribir_log(f"Ejecutando paso: {nombre}", nivel="info")
     
     try:
         if funcion:            
             funcion()
         else:
-            print("⚠️ No se proporcionó ninguna función para ejecutar.")
+            logger.escribir_log(nivel="info")
             time.sleep(1)
             
-        print(f"✅ Paso '{nombre}' ejecutado correctamente.")
+        logger.escribir_log(f"Paso '{nombre}' ejecutado correctamente.", nivel="success")
         return True
         
     except Exception as e:
-        print(f"✗ ERROR en el paso: {nombre}")
-        print(f"  Tipo de error: {type(e).__name__}")
-        print(f"  Descripción:   {e}")
-        
+        mensaje_error = (
+            f"ERROR CRÍTICO en el paso '{nombre}'\n"
+            f"  -> Tipo de error: {type(e).__name__}\n"
+            f"  -> Descripción:   {e}"
+        )
+        logger.escribir_log(mensaje_error, nivel="error")
         return False
     
 #===========================================
@@ -41,10 +43,7 @@ def ejecutar_paso(nombre, funcion):
 #===========================================
 
 def main():
-    print("\n" + "=" * 60)
-    print("🚀 PIPELINE - BIBLIOTECA IA TRADING")
-    
-    # La lista de diccionarios (Configuración limpia)
+
     pasos = [
         {    
             "id_code": "leer_pdf",
@@ -73,6 +72,7 @@ def main():
         }
     ]
     
+
     parser = argparse.ArgumentParser(
         description = "🚀 Motor del Pipeline - Biblioteca IA Trading"
     )
@@ -89,7 +89,6 @@ def main():
     
     args = parser.parse_args()
 
-    # CORRECCIÓN DETALLE 1: El bucle ahora itera sobre el objeto 'paso'
     if args.listar:
         print("\n" + "=" * 50)
         print("📋 PASOS DISPONIBLES EN EL PIPELINE:")
@@ -104,31 +103,42 @@ def main():
         
         if not paso_filtrado:
             print(f"❌ Error: El paso '{args.paso}' no existe.")
-            print("Usa 'python src\\pipeline.py --listar' para ver las opciones válidas.")
+            print("Usa 'python src/pipeline.py --listar' para ver las opciones válidas.")
             return
         
         pasos = paso_filtrado
+
+    # ==================================================
+    # ADQUISICIÓN DE RECURSOS Y OPERACIÓN SEGURA
+    # ==================================================
     
+    logger.crear_archivo_log()
     inicio = time.time()
     
-    # CORRECCIÓN DETALLE 2: Eliminado el desempaquetado posicional antiguo
-    for paso in pasos:
-        exito = ejecutar_paso(paso["nombre"], paso["funcion"])
+    try:
+        logger.escribir_log("🚀 PIPELINE - BIBLIOTECA IA TRADING INICIADO", nivel="info")
         
-        if not exito:
-            print("=" * 60)
-            print(f"🛑 PIPELINE ABORTADO: Fallo crítico en el paso '{paso['nombre']}'.")
-            print("Se detuvo la ejecución para proteger la integridad del sistema.")
-            print("=" * 60)
-            return
+        for paso in pasos:
+            exito = ejecutar_paso(paso["nombre"], paso["funcion"])
+            
+            if not exito:
+                logger.escribir_log(f"🛑 PIPELINE ABORTADO: Fallo crítico en el paso '{paso['nombre']}'.", nivel="error")
+                logger.escribir_log("Se detuvo la ejecución para proteger la integridad del sistema.", nivel="error")
+                return
+            
+        fin = time.time()
+        tiempo_total = fin - inicio
         
-    fin = time.time()
-    tiempo_total = fin - inicio
-    
-    print("\n" + "=" * 60)
-    print("📊 RESUMEN FINAL")
-    print(f"⏱️ Tiempo total de ejecución: {tiempo_total:.2f} segundos")
-    print("\n" + "=" * 60)
-    
+        logger.escribir_log("📊 RESUMEN FINAL", nivel="info")
+        logger.escribir_log(f"⏱️ Tiempo total de ejecución: {tiempo_total:.2f} segundos", nivel="success")
+        
+    except Exception as e_inesperado:
+        
+        logger.escribir_log(f"💥 EXCEPCIÓN INESPERADA EN EL NÚCLEO DEL PIPELINE: {e_inesperado}", nivel="error")
+        
+    finally:
+        
+        logger.cerrar_log()
+
 if __name__ == "__main__":
     main()
