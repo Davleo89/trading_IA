@@ -1,16 +1,17 @@
 import sqlite3
 import pickle
 from sentence_transformers import SentenceTransformer
-from config import DB_PATH, EMBEDDING_MODEL
+from config import LIBROS_DB_PATH, EMBEDDING_MODEL
 
 # ==================================================
 # FUNCIÓN PRINCIPAL PARA EL PIPELINE
 # ==================================================
 def main():
     print(f"  🧠 Cargando modelo de embeddings: {EMBEDDING_MODEL}...")
+ 
     modelo = SentenceTransformer(EMBEDDING_MODEL)
     
-    conexion = sqlite3.connect(DB_PATH)
+    conexion = sqlite3.connect(LIBROS_DB_PATH)
     cursor = conexion.cursor()
     
     try:
@@ -18,8 +19,8 @@ def main():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS embeddings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chunk_id INTEGER,
-            vector BLOB
+            chunk_id INTEGER NOT NULL,
+            vector BLOB NOT NULL
         )
         """)
         
@@ -55,7 +56,7 @@ def main():
         
     except Exception as e:
         conexion.rollback()
-        raise e
+        raise
     finally:
         conexion.close()
 

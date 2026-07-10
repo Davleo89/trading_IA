@@ -3,7 +3,7 @@ import ollama
 import json
 import time
 
-from config import DB_PATH
+from config import LIBROS_DB_PATH
 from config import LLM_MODEL
 from config import (
     cargar_json,
@@ -23,7 +23,7 @@ CHUNKS_POR_LIBRO = 10
 # CONEXION
 # ==========================================
 
-conexion = sqlite3.connect(DB_PATH)
+conexion = sqlite3.connect(LIBROS_DB_PATH)
 cursor = conexion.cursor()
 
 # ==========================================

@@ -1,5 +1,6 @@
 import sqlite3
-from config import DB_PATH
+from utils import logger
+from config import LIBRO_DB_PATH
 
 # ==================================================
 # DIVIDIR TEXTO
@@ -17,7 +18,7 @@ def dividir_texto(texto, tamano=300, overlap=50):
 # FUNCIÓN PRINCIPAL PARA EL PIPELINE
 # ==================================================
 def main():
-    conexion = sqlite3.connect(DB_PATH)
+    conexion = sqlite3.connect(LIBRO_DB_PATH)
     cursor = conexion.cursor()
     
     try:
@@ -25,8 +26,8 @@ def main():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS chunks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            libro_id INTEGER,
-            chunk_text TEXT
+            libro_id INTEGER NOT NULL,
+            chunk_text TEXT NOT NULL
         )
         """)
         
@@ -43,7 +44,7 @@ def main():
         libros = cursor.fetchall()
 
         for libro_id, texto_completo in libros:
-            print(f"  📖 Procesando fragmentos del libro ID: {libro_id}")
+            logger.escribir_log(f"  📖 Procesando fragmentos del libro ID: {libro_id}")
             for chunk in dividir_texto(texto_completo):
                 cursor.execute("""
                 INSERT INTO chunks (libro_id, chunk_text)
@@ -55,11 +56,11 @@ def main():
         # Conteo final
         cursor.execute("SELECT COUNT(*) FROM chunks")
         total_chunks = cursor.fetchone()[0]
-        print(f"  ✅ Total de chunks creados: {total_chunks}")
+        logger.escribir_log(f"  ✅ Total de chunks creados: {total_chunks}")
         
     except Exception as e:
         conexion.rollback()
-        raise e
+        raise 
     finally:
         conexion.close()
 

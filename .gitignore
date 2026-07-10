@@ -10,6 +10,7 @@ venv/
 pdf_books/
 logs/
 data/
+test/
 
 __pycache__/
 

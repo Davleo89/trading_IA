@@ -5,119 +5,74 @@ import ollama
 
 from sentence_transformers import SentenceTransformer
 from memoria import MemoriaConversacion
-from config import DB_PATH
-from config import EMBEDDING_MODEL
-from config import LLM_MODEL
+from config import LIBROS_DB_PATH, EMBEDDING_MODEL, LLM_MODEL
 from biblioteca.clasificador import clasificar_pregunta
 
+# ==================================================
+# MEMORIA DE CONVERSACIÓN
+# ==================================================
 memoria = MemoriaConversacion()
 
 # ==================================================
 # MODELO DE EMBEDDINGS
 # ==================================================
+# Nota: se carga al importar, pero podría moverse a inicialización diferida
 modelo = SentenceTransformer(EMBEDDING_MODEL)
 
 # ==================================================
 # CONEXIÓN SQLITE
 # ==================================================
-conexion = sqlite3.connect(DB_PATH)
+conexion = sqlite3.connect(LIBROS_DB_PATH)
 cursor = conexion.cursor()
 
 # ==================================================
 # SIMILITUD COSENO
 # ==================================================
 def similitud_coseno(a, b):
-
     norma_a = np.linalg.norm(a)
     norma_b = np.linalg.norm(b)
 
     if norma_a == 0 or norma_b == 0:
         return 0
 
-    return np.dot(a, b) / (
-        norma_a * norma_b
-    )
-    
+    return np.dot(a, b) / (norma_a * norma_b)
+
 # ==================================================
 # BUSCAMOS LOS CHUNKS RELEVANTES
 # ==================================================
-def buscar_chunks(pregunta, categoria, top = 3, score_min = 0.40):
-    # Obtener el embedding de la pregunta
+def buscar_chunks(pregunta, categoria, top=3, score_min=0.40):
     embedding_pregunta = modelo.encode(pregunta)
-    
+
     cursor.execute("""
     SELECT
         chunks.chunk_text,
         libros.nombre_archivo,
         libros.tematica,
         embeddings.vector
-
     FROM chunks
-
-    JOIN embeddings
-    ON chunks.id = embeddings.chunk_id
-
-    JOIN libros
-    ON chunks.libro_id = libros.id
-
+    JOIN embeddings ON chunks.id = embeddings.chunk_id
+    JOIN libros ON chunks.libro_id = libros.id
     WHERE libros.tematica = ?
-    """,
-    (
-        categoria,
-    ))
+    """, (categoria,))
 
     resultados = []
-
     for texto, libro, categoria, vector_blob in cursor.fetchall():
         vector = pickle.loads(vector_blob)
-        score = similitud_coseno(
-            embedding_pregunta,
-            vector
-        )
+        score = similitud_coseno(embedding_pregunta, vector)
+        resultados.append((texto, libro, categoria, score))
 
-        resultados.append(
-            (
-            texto,
-            libro,
-            categoria,
-            score
-            )
-        )   
-    
-    resultados.sort(
-    reverse = True,
-    key = lambda x: x[3]
-    )
-    
-    resultados_filtrados = []
-    
-    for resultado in resultados[:10]:
-        score = resultado[3]
-        libro = resultado[1]
-        
-        if resultado[3] >= score_min:
-            resultados_filtrados.append(resultado)
-            
-    print(f"Chunks encontrados: {len(resultados)}")
-    print(f"Chunks validos: {len(resultados_filtrados)}")
-    if resultados_filtrados:
+    resultados.sort(reverse=True, key=lambda x: x[3])
 
-        print("\nMEJOR CHUNK ENCONTRADO:\n")
-        print(resultados_filtrados[0][0][:1000])
+    resultados_filtrados = [
+        r for r in resultados[:10] if r[3] >= score_min
+    ]
 
-    else:
-
-        print("\n⚠️ No se encontraron chunks relevantes")
-        
     return resultados_filtrados[:top]
 
 # ==================================================
 # CONSTRUIMOS EL CONTEXTO PARA LA IA
 # ==================================================
 def obtener_contexto(chunks):
-    
-    print(f"📚 Chunks encontrados: {len(chunks)}")
-    
     contexto = ""
     for texto, libro, categoria, score in chunks:
         contexto += f"""
@@ -128,38 +83,22 @@ def obtener_contexto(chunks):
         {texto}
         ----------------------------------
         """
-    
     if len(chunks) == 0:
-        return (
-            "No se encontró información suficientemente relevante en la base de conocimiento."
-        )
+        return "No se encontró información suficientemente relevante en la base de conocimiento."
     return contexto
 
 def obtener_fuentes(chunks):
-    
-    fuentes = []
-    for texto, libro, categoria, score in chunks:
-        fuentes.append(
-            {
-                "libro": libro,
-                "categoria": categoria,
-                "score": score
-            }
-        )
-    return fuentes
+    return [
+        {"libro": libro, "categoria": categoria, "score": score}
+        for _, libro, categoria, score in chunks
+    ]
 
 def calcular_confianza(chunks):
     if not chunks:
         return 0
-    scores = [
-        score
-        for _, _, _, score in chunks
-    ]
+    scores = [score for _, _, _, score in chunks]
     promedio = sum(scores) / len(scores)
-    return round(
-        promedio * 100,
-        2
-    )
+    return round(promedio * 100, 2)
 
 # ==================================================
 # CONSULTAMOS A LA IA
@@ -187,64 +126,46 @@ def preguntar_ia(pregunta, categoria):
 
     {pregunta}
     """
+
     respuesta = ollama.chat(
-        model = LLM_MODEL,
-        messages = [
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    
-    respuesta_texto = (
-    respuesta["message"]["content"]
-    )
-    respuesta_texto += (
-        f"\n\nNivel de confianza: "
-        f"{confianza:.2f}%"
+        model=LLM_MODEL,
+        messages=[{"role": "user", "content": prompt}]
     )
 
-    memoria.add_user(
-        pregunta
-    )
+    respuesta_texto = respuesta["message"]["content"]
+    respuesta_texto += f"\n\nNivel de confianza: {confianza:.2f}%"
 
-    memoria.add_assistant(
-        respuesta_texto
-    )
-    
+    memoria.add_user(pregunta)
+    memoria.add_assistant(respuesta_texto)
+
     texto_fuentes = "\n\nFuentes utilizadas:\n"
     for fuente in fuentes[:5]:
         texto_fuentes += (
-            f"\n"
-            f"Libro: {fuente['libro']}\n"
+            f"\nLibro: {fuente['libro']}\n"
             f"Categoria: {fuente['categoria']}\n"
             f"Confianza: {fuente['score']:.4f}\n"
         )
-    
-    respuesta_final = (respuesta_texto + texto_fuentes)
 
-    return respuesta_final
+    return respuesta_texto + texto_fuentes
 
-while True:
+# ==================================================
+# FLUJO PRINCIPAL (INTERACTIVO)
+# ==================================================
+def main():
+    try:
+        while True:
+            pregunta = input("\nPregunta: ")
+            if pregunta.lower() == "salir":
+                break
 
-    pregunta = input(
-        "\nPregunta: "
-    )
+            categoria = clasificar_pregunta(pregunta)
+            respuesta = preguntar_ia(pregunta, categoria)
 
-    if pregunta.lower() == "salir":
-        break
+            print("\nRespuesta:\n")
+            print(respuesta)
 
-    categoria = clasificar_pregunta(
-        pregunta
-    )
+    finally:
+        conexion.close()
 
-    respuesta = preguntar_ia(
-        pregunta,
-        categoria
-    )
-
-    print("\nRespuesta:\n")
-    print(respuesta)
-    
-
+if __name__ == "__main__":
+    main()

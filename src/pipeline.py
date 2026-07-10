@@ -12,6 +12,12 @@ import biblioteca.crear_embeddings as crear_embeddings
 import biblioteca.generar_resumenes as generar_resumenes
 import biblioteca.clasificador_libros as clasificador_libros
 
+import mercado.descargar_noticias as descargar_noticias
+
+import memoria.memoria as memoria
+
+import ia.consultar_ia as consultar_ia
+
 #===========================================
 # FUNCIONES AUXILIARES
 #===========================================
@@ -69,6 +75,11 @@ def main():
             "id_code": "clasificador",
             "nombre": "Clasificar Libros",
             "funcion": clasificador_libros.main
+        },
+        {
+            "id_code": "descargar_noticias",
+            "nombre": "Descargar Noticias",
+            "funcion": descargar_noticias.main
         }
     ]
     

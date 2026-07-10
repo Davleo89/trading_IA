@@ -2,7 +2,7 @@ import sqlite3
 import ollama
 import json
 
-from config import DB_PATH
+from config import LIBRO_DB_PATH
 from config import LLM_MODEL
 
 # ==================================================
@@ -11,7 +11,7 @@ from config import LLM_MODEL
 
 def main():
     # Establecemos la conexión de base de datos de manera local y segura
-    conexion = sqlite3.connect(DB_PATH)
+    conexion = sqlite3.connect(LIBRO_DB_PATH)
     cursor = conexion.cursor()
     
     try:

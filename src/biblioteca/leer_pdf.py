@@ -1,78 +1,147 @@
-
 import sqlite3
 from pypdf import PdfReader
 
-from config import DB_PATH
-from config import PDF_PATH
+from utils import logger
+from config import LIBROS_DB_PATH, PDF_PATH, PDF_PAGINAS_IGNORADAS
+
 
 # ==================================================
 # FUNCIÓN PRINCIPAL PARA EL PIPELINE
 # ==================================================
 
 def main():
-    # Establecemos la conexión dentro de la función para el pipeline
-    conexion = sqlite3.connect(DB_PATH)
+
+    conexion = sqlite3.connect(LIBROS_DB_PATH)
     cursor = conexion.cursor()
-    
+
     try:
-        # 1. Crear tabla si no existe
+
+        # --------------------------------------------------
+        # Crear tabla
+        # --------------------------------------------------
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS libros (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre_archivo TEXT UNIQUE,
             texto_completo TEXT,
-            resumen TEXT
+            resumen TEXT,
+            tematica TEXT
         )
         """)
+
         conexion.commit()
 
-        # 2. Verificar la ruta y leer los PDFs
-        if PDF_PATH.exists():
-            archivos = [
-                archivo
-                for archivo in PDF_PATH.iterdir()
-                if archivo.suffix.lower() == ".pdf"
-            ]
+        # --------------------------------------------------
+        # Verificar carpeta de PDFs
+        # --------------------------------------------------
 
-            print(f"  📚 PDFs encontrados en la carpeta: {len(archivos)}")
+        if not PDF_PATH.exists():
+            logger.escribir_log(
+                f"No existe la carpeta: {PDF_PATH.resolve()}",
+                nivel="error"
+            )
+            return
 
-            for archivo in archivos:
-                print(f"  📖 Leyendo: {archivo.name}")
-                
-                try:
-                    reader = PdfReader(str(archivo))
-                    texto_completo = ""
+        archivos = sorted(PDF_PATH.glob("*.pdf"))
 
-                    # Extrae texto saltándose las primeras 15 páginas
-                    for pagina in reader.pages[15:]:
-                        texto_completo += pagina.extract_text() or ""
+        logger.escribir_log(
+            f"📚 PDFs encontrados: {len(archivos)}",
+            nivel="info"
+        )
 
-                    cursor.execute("""
-                    INSERT OR IGNORE INTO libros (nombre_archivo, texto_completo)
-                    VALUES (?, ?)
-                    """, (archivo.name, texto_completo))
+        # --------------------------------------------------
+        # Leer cada PDF
+        # --------------------------------------------------
 
-                    print(f"     ✅ Guardado e indexado: {archivo.name}")
+        for archivo in archivos:
 
-                except Exception as e:
-                    print(f"     ❌ Error al procesar {archivo.name}: {e}")
-            
-            # Guardamos todos los cambios al finalizar el bucle
-            conexion.commit()
-            print("\n🚀 Lectura y almacenamiento de PDFs completado.")
-            
-        else:
-            print(f"  ⚠️ No existe la carpeta especificada en: {PDF_PATH.resolve()}")
+            logger.escribir_log(
+                f"📖 Leyendo: {archivo.name}",
+                nivel="info"
+            )
+
+            try:
+
+                reader = PdfReader(str(archivo))
+
+                if reader.is_encrypted:
+                    logger.escribir_log(
+                        f"⚠ El PDF está protegido: {archivo.name}",
+                        nivel="warning"
+                    )
+                    continue
+
+                texto_paginas = []
+
+                for pagina in reader.pages[PDF_PAGINAS_IGNORADAS:]:
+
+                    texto_pagina = pagina.extract_text() or ""
+
+                    if not texto_pagina.strip():
+                        continue
+
+                    texto_paginas.append(texto_pagina)
+
+                texto_completo = "\n".join(texto_paginas)
+
+                if not texto_completo.strip():
+
+                    logger.escribir_log(
+                        f"⚠ No se pudo extraer texto de {archivo.name}",
+                        nivel="warning"
+                    )
+                    continue
+
+                cursor.execute("""
+                INSERT OR IGNORE INTO libros
+                (
+                    nombre_archivo,
+                    texto_completo
+                )
+                VALUES (?, ?)
+                """,
+                (
+                    archivo.name,
+                    texto_completo
+                ))
+
+                logger.escribir_log(
+                    f"✅ Guardado: {archivo.name}",
+                    nivel="success"
+                )
+
+            except Exception as e:
+
+                logger.escribir_log(
+                    f"❌ Error procesando {archivo.name}: {e}",
+                    nivel="error"
+                )
+
+                continue
+
+        conexion.commit()
+
+        logger.escribir_log(
+            "🚀 Lectura de PDFs finalizada.",
+            nivel="success"
+        )
 
     except Exception as e:
-        # En caso de un fallo general en la base de datos, deshacemos cambios
+
         conexion.rollback()
-        raise e
-        
+
+        logger.escribir_log(
+            f"Error general del módulo leer_pdf: {e}",
+            nivel="error"
+        )
+
+        raise
+
     finally:
-        # Garantizamos que la base de datos se cierre pase lo que pase
+
         conexion.close()
 
-# Permite ejecutar el módulo de forma aislada para pruebas rápidas
+
 if __name__ == "__main__":
     main()
