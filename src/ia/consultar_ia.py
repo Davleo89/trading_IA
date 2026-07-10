@@ -8,7 +8,7 @@ from memoria import MemoriaConversacion
 from config import DB_PATH
 from config import EMBEDDING_MODEL
 from config import LLM_MODEL
-from clasificador import clasificar_pregunta
+from biblioteca.clasificador import clasificar_pregunta
 
 memoria = MemoriaConversacion()
 

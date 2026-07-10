@@ -6,11 +6,11 @@ import argparse
 # ==========================================
 from utils import logger
 
-import leer_pdf
-import crear_chunks
-import crear_embeddings
-import generar_resumenes
-import clasificador_libros
+import biblioteca.leer_pdf as leer_pdf
+import biblioteca.crear_chunks as crear_chunks
+import biblioteca.crear_embeddings as crear_embeddings
+import biblioteca.generar_resumenes as generar_resumenes
+import biblioteca.clasificador_libros as clasificador_libros
 
 #===========================================
 # FUNCIONES AUXILIARES
